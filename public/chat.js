@@ -20,7 +20,7 @@ const writePlayers = (players, game) => {
         : pl.dead
         ? `${pl.name} (mort)`
         : pl.run
-        ? `${pl.name} : ${pl.score} pts posés`
+        ? `${pl.name} : ${pl.beaten.length + pl.score} pts posés`
         : `${current}${pl.name} : ${pl.hp}pv, ${pl.beaten.length} dans la pile`;
     }
   });
@@ -30,6 +30,12 @@ const writePlayers = (players, game) => {
       parent.removeChild(document.getElementById(el.id));
     }
   });
+  // update display of whos plyer is the turn
+  let currentPlayer = listPlayers.find((pl) => pl.current);
+  if (currentPlayer)
+    document.getElementById(
+      "whoseTurn",
+    ).innrText = `Au tour de ${currentPlayer}`;
 };
 
 const askName = () => {

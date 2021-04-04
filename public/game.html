@@ -13,15 +13,17 @@
         <label for="readyCheck">Ready ?</label>
         <input type="checkbox" id="readyCheck" onclick="ready()" />
       </div>
-      <div id="centralcards">
-        <div class="divCards" id="deck" onclick="draw()">DONJON</div>
-        <div class="divCards" id="currentCard">Carte actuelle</div>
-        <div class="divCards" id="discardPile">Defausse</div>
-      </div>
-      <div id="mainbuttons">
-        <button id="fightBtn" class="btn" onclick="fight()">Tanker</button>
-        <button id="passBtn" class="btn" onclick="pass()">Passer</button>
-        <button id="fleeBtn" class="btn" onclick="flee()">Fuir</button>
+      <div id="game-container">
+        <div id="centralcards">
+          <div class="divCards" id="deck" onclick="draw()">DONJON</div>
+          <div class="divCards" id="currentCard">Carte actuelle</div>
+          <div class="divCards" id="discardPile">Defausse</div>
+        </div>
+        <div id="mainbuttons">
+          <button id="fightBtn" class="btn" onclick="fight()">Tanker</button>
+          <button id="passBtn" class="btn" onclick="pass()">Passer</button>
+          <button id="fleeBtn" class="btn" onclick="flee()">Fuir</button>
+        </div>
       </div>
     </div>
     <button class="noselect" id="mute" onclick="enableMute()">mute</button>

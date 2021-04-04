@@ -2,20 +2,29 @@ const socket = io();
 let myTurn = false;
 let currentCard = null;
 let game;
+let players;
 
 socket.on("lists", (listPlayers, gameUpd) => {
   game = gameUpd;
+  players = listPlayers;
   writePlayers(listPlayers, game);
   if (game.state.includes("game")) {
     let currentPlayer = listPlayers.find((pl) => pl.current);
-    console.log("cur", currentPlayer);
     myTurn = socket.id === currentPlayer.id;
     document.getElementById("page").style.backgroundColor =
       socket.id === currentPlayer.id ? "green" : "white";
-  }
-  if (currentCard) {
-    document.getElementById("fightBtn").style.display = "block";
-    document.getElementById("passBtn").style.display = "none";
+
+    if (currentCard && myTurn) {
+      document.getElementById("fightBtn").style.display = "block";
+      document.getElementById("passBtn").style.display = "none";
+    }
+    console.log("cur", currentPlayer);
+    if (
+      myTurn &&
+      ((currentCard === null && currentPlayer.drawThisTurn > 0) ||
+        (currentCard !== null && currentPlayer.drawThisTurn === 0))
+    )
+      document.getElementById("fleeBtn").style.display = "block";
   }
 });
 
@@ -41,7 +50,9 @@ socket.on("fight over", () => {
     document.getElementById("fleeBtn").style.display = "block";
   }
 });
-socket.on("game over", (result) => alert(result));
+socket.on("game over", (result) => {
+  document.getElementById("game-container").innerText = result;
+});
 const draw = () => {
   if (myTurn && !game.state.includes("fight")) {
     socket.emit("draw");
@@ -63,7 +74,12 @@ const pass = () => {
 };
 
 const flee = () => {
-  if (myTurn) {
+  // only plays if no current card, or if there is one but the player did not draw this turn
+  //(i.e someone flee or die before, leaving the monster here)
+  if (
+    myTurn &&
+    (currentCard === null || players[socket.id].drawThisTurn === 0)
+  ) {
     socket.emit("flee");
     document.getElementById("passBtn").style.display = "none";
     document.getElementById("fleeBtn").style.display = "none";

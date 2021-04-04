@@ -1,6 +1,6 @@
-const socketio = require("socket.io");
-const cardList = require("./data.js");
-
+//const socketio = require("socket.io");
+const { cardsList, itemsList } = require("./data.js");
+console.table(itemsList);
 module.exports = function (server) {
   // io server
   const io = socketio(server);
@@ -8,7 +8,7 @@ module.exports = function (server) {
   //init
   let players = {};
   const game = {};
-  const deck = shuffle(buildDeck(cardList));
+  const deck = shuffle(buildDeck(cardsList));
   game.state = "lobby";
   let currentCard = null;
   let order;
@@ -42,6 +42,7 @@ module.exports = function (server) {
         id: socket.id,
         current: false,
         beaten: [],
+        drawThisTurn: 0,
       };
 
       // CHAT PART
@@ -73,6 +74,8 @@ module.exports = function (server) {
         currentCard = drawCard(deck);
         io.emit("card draw", currentCard);
         game.state = "game fight";
+        players[socket.id].drawThisTurn += 1;
+        updateAll();
       }
     });
     socket.on("fight", () => {
@@ -82,12 +85,14 @@ module.exports = function (server) {
         if (players[socket.id].hp <= 0) {
           players[socket.id].hp = 0;
           players[socket.id].dead = true;
+          updateAll();
           if (Object.values(players).every((pl) => pl.dead || pl.run)) {
             gameOver();
             return;
           }
-          order.filter((pl) => !pl.dead && !pl.run);
           passToNextPlayer();
+
+          updateAll();
         } else {
           players[socket.id].beaten.push(currentCard);
           currentCard = null;
@@ -97,20 +102,42 @@ module.exports = function (server) {
           }
           game.state = "game";
           io.emit("fight over");
+          updateAll();
         }
       }
       updateAll();
     });
 
     socket.on("pass", () => {
-      if (!game.state.includes("fight")) {
+      if (
+        !game.state.includes("fight") &&
+        players[socket.id].drawThisTurn > 0
+      ) {
+        passToNextPlayer();
+        updateAll();
+      }
+    });
+    socket.on("flee", () => {
+      let currentPlayer = Object.values(players).find((pl) => pl.current);
+      if (
+        socket.id === findCurrentPlayer().id &&
+        ((currentCard === null && currentPlayer.drawThisTurn > 0) ||
+          (currentCard !== null && currentPlayer.drawThisTurn === 0))
+      ) {
+        players[socket.id].run = true;
+        updateAll();
+        // check if game is over
+        if (Object.values(players).every((pl) => pl.dead || pl.run)) {
+          gameOver();
+          return;
+        }
         passToNextPlayer();
         updateAll();
       }
     });
 
     socket.on("disconnect", (reason) => {
-      console.log(`${players[socket.id].name} disconnected because ${reason}`);
+      console.log(`a player disconnected because ${reason}`);
       delete players[socket.id];
       console.log(`${Object.values(players).length} left`);
       //  if (Object.values(players).length <= 1 && game.state === "game") reset();
@@ -124,23 +151,33 @@ module.exports = function (server) {
       io.emit("lists", Object.values(players), game);
     }
     const passToNextPlayer = () => {
-      console.log(order);
+      // cant pass if alone
+      if (order.length <= 1) return;
+
+      // find whos turn it is
       let currentIndex = order.findIndex((pl) => pl.current);
-      console.log("current ind", currentIndex);
+      // change
       order[currentIndex].current = false;
       if (currentIndex === order.length - 1) order[0].current = true;
       else order[1 + currentIndex].current = true;
-      console.log(
-        "after treatment cur=",
-        order.findIndex((pl) => pl.current),
-      );
+
+      // update whos current
+      currentIndex = order.findIndex((pl) => pl.current);
+      // reset count of cards drawThisTurn
+      order[currentIndex].drawThisTurn = 0;
+
+      // filter
+      order = order.filter((pl) => !pl.dead && !pl.run);
+
+      console.log(`updated order`);
+      console.log(order);
     };
 
     const findCurrentPlayer = () =>
       Object.values(players).find((pl) => pl.current);
   });
   const gameOver = () => {
-    game.state = "over";
+    game.state = "lobby";
     let result = "";
     if (Object.values(players).every((pl) => pl.dead)) {
       result = "Tout le monde est mort :(";

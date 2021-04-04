@@ -31,11 +31,11 @@ const writePlayers = (players, game) => {
     }
   });
   // update display of whos plyer is the turn
-  let currentPlayer = listPlayers.find((pl) => pl.current);
-  if (currentPlayer)
-    document.getElementById(
-      "whoseTurn",
-    ).innrText = `Au tour de ${currentPlayer}`;
+  // let currentPlayer = players.find((pl) => pl.current);
+  // if (currentPlayer && game.state.includes("game"))
+  //   document.getElementById(
+  //     "whoseTurn",
+  //   ).innerText = `Au tour de ${currentPlayer.name}`;
 };
 
 const askName = () => {

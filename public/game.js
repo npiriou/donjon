@@ -11,12 +11,12 @@ socket.on("lists", (listPlayers, gameUpd) => {
   if (game.state.includes("game")) {
     let currentPlayer = listPlayers.find((pl) => pl.current);
     myTurn = socket.id === currentPlayer.id;
-    document.getElementById("page").style.backgroundColor =
+    document.getElementById("deck").style.borderColor =
       socket.id === currentPlayer.id ? "green" : "white";
 
     if (currentCard && myTurn) {
-      document.getElementById("fightBtn").style.display = "block";
-      document.getElementById("passBtn").style.display = "none";
+      document.getElementById("fightBtn").disabled = false;
+      document.getElementById("passBtn").disabled = true;
     }
     console.log("cur", currentPlayer);
     if (
@@ -24,31 +24,38 @@ socket.on("lists", (listPlayers, gameUpd) => {
       ((currentCard === null && currentPlayer.drawThisTurn > 0) ||
         (currentCard !== null && currentPlayer.drawThisTurn === 0))
     )
-      document.getElementById("fleeBtn").style.display = "block";
+      document.getElementById("fleeBtn").disabled = false;
   }
 });
 
 socket.on("game starts", (listPlayers, game) => {
   document.getElementById("divReadyCheck").style.display = "none";
-  document.getElementById("centralcards").style.display = "block";
+  document.getElementById("centralcards").style.display = "flex";
+  document.getElementById("mainbuttons").style.display = "flex";
+  Array.from(document.getElementById("mainbuttons").children).forEach(
+    (btn) => (btn.disabled = true),
+  );
 });
 socket.on("card draw", (card) => {
   currentCard = card;
   updateCardDisplay(currentCard);
   if (myTurn) {
-    document.getElementById("fightBtn").style.display = "block";
+    document.getElementById("fightBtn").disabled = false;
   }
-  document.getElementById("passBtn").style.display = "none";
-  document.getElementById("fleeBtn").style.display = "none";
+  document.getElementById("passBtn").disabled = true;
+  document.getElementById("fleeBtn").disabled = true;
 });
 
 socket.on("fight over", () => {
   currentCard = null;
   updateCardDisplay(currentCard);
   if (myTurn) {
-    document.getElementById("passBtn").style.display = "block";
-    document.getElementById("fleeBtn").style.display = "block";
+    document.getElementById("passBtn").disabled = false;
+    document.getElementById("fleeBtn").disabled = false;
   }
+});
+socket.on("flee roll", (roll) => {
+  document.getElementById("info").innerText = `Le jet de fuite est de ${roll}`;
 });
 socket.on("game over", (result) => {
   document.getElementById("game-container").innerText = result;
@@ -61,25 +68,22 @@ const draw = () => {
 const fight = () => {
   if (myTurn) {
     socket.emit("fight");
-    document.getElementById("fightBtn").style.display = "none";
-    document.getElementById("fleeBtn").style.display = "none";
+    document.getElementById("fightBtn").disabled = true;
+    document.getElementById("fleeBtn").disabled = true;
   }
 };
 const pass = () => {
   if (myTurn) {
     socket.emit("pass");
-    document.getElementById("passBtn").style.display = "none";
-    document.getElementById("fleeBtn").style.display = "none";
+    document.getElementById("passBtn").disabled = true;
+    document.getElementById("fleeBtn").disabled = true;
   }
 };
 
 const flee = () => {
   // only plays if no current card, or if there is one but the player did not draw this turn
   //(i.e someone flee or die before, leaving the monster here)
-  if (
-    myTurn &&
-    (currentCard === null || players[socket.id].drawThisTurn === 0)
-  ) {
+  if (myTurn) {
     socket.emit("flee");
     document.getElementById("passBtn").style.display = "none";
     document.getElementById("fleeBtn").style.display = "none";
@@ -88,6 +92,6 @@ const flee = () => {
 
 const reset = () => socket.emit("reset");
 const updateCardDisplay = (card) =>
-  (document.getElementById("currentCard").innerText = card
-    ? `Carte actuelle:  ${card.power} ${card.name}`
-    : `Carte actuelle`);
+  (document.getElementById("currentCard").innerHTML = card
+    ? `<span class='bold'>${card.power}</span> ${card.name}`
+    : "-");

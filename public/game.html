@@ -6,9 +6,9 @@
     <link href="style.css" rel="stylesheet" type="text/css" />
   </head>
   <body>
+    <header><ul id="listPlayers" class="noselect"></ul></header>
     <div id="page">
-      <div id="whoseTurn"></div>
-      <ul id="listPlayers" class="noselect"></ul>
+      <!-- <div id="whoseTurn"></div> -->
       <div id="divReadyCheck">
         <label for="readyCheck">Ready ?</label>
         <input type="checkbox" id="readyCheck" onclick="ready()" />
@@ -16,17 +16,21 @@
       <div id="game-container">
         <div id="centralcards">
           <div class="divCards" id="deck" onclick="draw()">DONJON</div>
-          <div class="divCards" id="currentCard">Carte actuelle</div>
-          <div class="divCards" id="discardPile">Defausse</div>
+          <div class="divCards">
+            Carte actuelle
+            <div id="currentCard"></div>
+          </div>
+          <!-- <div class="divCards" id="discardPile">Defausse</div> -->
         </div>
         <div id="mainbuttons">
           <button id="fightBtn" class="btn" onclick="fight()">Tanker</button>
           <button id="passBtn" class="btn" onclick="pass()">Passer</button>
           <button id="fleeBtn" class="btn" onclick="flee()">Fuir</button>
         </div>
+        <div id="info"></div>
       </div>
     </div>
-    <button class="noselect" id="mute" onclick="enableMute()">mute</button>
+    <!-- <button class="noselect" id="mute" onclick="enableMute()">mute</button> -->
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="/game.js"></script>

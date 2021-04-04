@@ -1,6 +1,5 @@
-//const socketio = require("socket.io");
+const socketio = require("socket.io");
 const { cardsList, itemsList } = require("./data.js");
-console.table(itemsList);
 module.exports = function (server) {
   // io server
   const io = socketio(server);
@@ -8,12 +7,13 @@ module.exports = function (server) {
   //init
   let players = {};
   const game = {};
-  const deck = shuffle(buildDeck(cardsList));
+  let deck;
   game.state = "lobby";
   let currentCard = null;
   let order;
 
   const start = () => {
+    deck = shuffle(buildDeck(cardsList));
     game.state = "game";
     game.turn = 1;
     // random player order
@@ -124,14 +124,24 @@ module.exports = function (server) {
         ((currentCard === null && currentPlayer.drawThisTurn > 0) ||
           (currentCard !== null && currentPlayer.drawThisTurn === 0))
       ) {
-        players[socket.id].run = true;
-        updateAll();
-        // check if game is over
-        if (Object.values(players).every((pl) => pl.dead || pl.run)) {
-          gameOver();
-          return;
+        let fleeRoll = rollDice();
+        io.emit("flee roll", fleeRoll);
+        // draw regularly if no current card
+        if (currentCard !== null) {
+          if (fleeRoll >= currentCard.power) {
+            // player runs away successfully !!
+            players[socket.id].run = true;
+            updateAll();
+            // check if game is over
+            if (Object.values(players).every((pl) => pl.dead || pl.run)) {
+              gameOver();
+              return;
+            }
+            passToNextPlayer();
+          }
         }
-        passToNextPlayer();
+        ////
+
         updateAll();
       }
     });
@@ -140,7 +150,7 @@ module.exports = function (server) {
       console.log(`a player disconnected because ${reason}`);
       delete players[socket.id];
       console.log(`${Object.values(players).length} left`);
-      //  if (Object.values(players).length <= 1 && game.state === "game") reset();
+      if (Object.values(players).length <= 1 && game.state === "game") reset();
       updateAll();
     });
     socket.on("reset", () => {
@@ -222,3 +232,5 @@ const buildDeck = (list) => {
   });
   return deck;
 };
+const rollDice = (min = 1, max = 6, mod = 0) =>
+  min + Math.floor(Math.random() * (max - min + 1)) + mod;

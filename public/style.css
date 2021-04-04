@@ -1,6 +1,3 @@
-.btn {
-  display: none;
-}
 #page {
   height: 100vh;
   display: flex;
@@ -9,6 +6,18 @@
   text-align: center;
   align-self: center;
 }
+#game-container {
+  display: flex;
+  justify-content: space-around;
+  flex-direction: column;
+}
+#mainbuttons {
+  display: none;
+  justify-content: space-around;
+  align-items: center;
+  padding: 5px;
+  border: 1px solid black;
+}
 .divCards {
   border-top: 1px solid grey;
 }
@@ -16,30 +25,32 @@
   background-color: black;
   color: white;
   cursor: pointer;
+  border: 5px solid black;
+  width: min(30vw, 25vh);
+  height: min(35vw, 20vh);
 }
 #centralcards {
   display: none;
+  flex-direction: row;
+  justify-content: space-evenly;
 }
-
-#mute {
+.bold {
+  font-weight: bold;
+}
+/* #mute {
   padding: 5px;
   position: absolute;
   right: 20;
   top: 30;
-}
+} */
 .noselect {
   user-select: none;
 }
 #listPlayers {
   list-style: none;
-  position: absolute;
-  top: 30%;
-  right: 20px;
   border: 1px solid black;
   background-color: white;
-  width: 150px;
-  height: 50vh;
-  overflow: scroll;
+  width: 100vw;
   padding: 0;
 }
 
@@ -47,17 +58,6 @@
   font-family: "Alice", serif;
 }
 
-.divScore {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  text-align: left;
-  background: white;
-  position: absolute;
-  right: 40;
-  top: 70;
-  border-radius: 3px;
-}
 #titreScore {
   padding: 3px;
 }

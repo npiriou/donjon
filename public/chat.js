@@ -55,3 +55,4 @@ socket.on("too late", () => {
   document.getElementById("page").innerText =
     "Désolé la partie a déjà commencé, reviens plus tard...";
 });
+const newInfo = (inf) => (document.getElementById("info").innerText = inf);

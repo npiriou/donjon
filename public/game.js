@@ -18,7 +18,6 @@ socket.on("lists", (listPlayers, gameUpd) => {
       document.getElementById("fightBtn").disabled = false;
       document.getElementById("passBtn").disabled = true;
     }
-    console.log("cur", currentPlayer);
     if (
       myTurn &&
       ((currentCard === null && currentPlayer.drawThisTurn > 0) ||
@@ -54,9 +53,19 @@ socket.on("fight over", () => {
     document.getElementById("fleeBtn").disabled = false;
   }
 });
-socket.on("flee roll", (roll) => {
-  document.getElementById("info").innerText = `Le jet de fuite est de ${roll}`;
-});
+socket.on("flee roll", (roll, currentPlayer) =>
+  newInfo(`Le jet de fuite de ${currentPlayer.name} est de ${roll}`),
+);
+socket.on("player flee", (player) =>
+  newInfo(
+    `${player.name} a fuit avec ${player.beaten.length} Monstres dans sa pile`,
+  ),
+);
+socket.on("player dead", (player) =>
+  newInfo(
+    `${player.name} est mort avec ${player.beaten.length} Monstres dans sa pile`,
+  ),
+);
 socket.on("game over", (result) => {
   document.getElementById("game-container").innerText = result;
 });

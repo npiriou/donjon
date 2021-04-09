@@ -11,6 +11,7 @@ module.exports = function (server) {
   game.state = "lobby";
   let currentCard = null;
   let order;
+  let fleeRoll = null;
 
   const start = () => {
     deck = shuffle(buildDeck(cardsList));
@@ -36,7 +37,7 @@ module.exports = function (server) {
         ready: false,
         score: 0,
         name: "",
-        hp: 10,
+        hp: 20,
         dead: false,
         run: false,
         id: socket.id,
@@ -75,6 +76,7 @@ module.exports = function (server) {
         io.emit("card draw", currentCard);
         game.state = "game fight";
         players[socket.id].drawThisTurn += 1;
+        if (fleeRoll !== null) tryToRun(players[socket.id], fleeRoll);
         updateAll();
       }
     });
@@ -85,6 +87,7 @@ module.exports = function (server) {
         if (players[socket.id].hp <= 0) {
           players[socket.id].hp = 0;
           players[socket.id].dead = true;
+          io.emit("player dead", players[socket.id]);
           updateAll();
           if (Object.values(players).every((pl) => pl.dead || pl.run)) {
             gameOver();
@@ -124,23 +127,12 @@ module.exports = function (server) {
         ((currentCard === null && currentPlayer.drawThisTurn > 0) ||
           (currentCard !== null && currentPlayer.drawThisTurn === 0))
       ) {
-        let fleeRoll = rollDice();
-        io.emit("flee roll", fleeRoll);
+        fleeRoll = rollDice();
+        io.emit("flee roll", fleeRoll, currentPlayer);
         // draw regularly if no current card
         if (currentCard !== null) {
-          if (fleeRoll >= currentCard.power) {
-            // player runs away successfully !!
-            players[socket.id].run = true;
-            updateAll();
-            // check if game is over
-            if (Object.values(players).every((pl) => pl.dead || pl.run)) {
-              gameOver();
-              return;
-            }
-            passToNextPlayer();
-          }
+          tryToRun(players[socket.id], fleeRoll);
         }
-        ////
 
         updateAll();
       }
@@ -182,10 +174,24 @@ module.exports = function (server) {
       console.log(`updated order`);
       console.log(order);
     };
-
+    const tryToRun = (player, roll) => {
+      if (roll >= currentCard.power) {
+        // player runs away successfully !!
+        player.run = true;
+        io.emit("player flee", player);
+        updateAll();
+        // check if game is over
+        if (Object.values(players).every((pl) => pl.dead || pl.run)) {
+          gameOver();
+          return;
+        }
+        passToNextPlayer();
+      }
+    };
     const findCurrentPlayer = () =>
       Object.values(players).find((pl) => pl.current);
   });
+
   const gameOver = () => {
     game.state = "lobby";
     let result = "";

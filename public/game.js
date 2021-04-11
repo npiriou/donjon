@@ -14,8 +14,15 @@ socket.on("lists", (listPlayers, gameUpd) => {
     myTurn = socket.id === currentPlayer.id;
 
     // changing display for the curent player
-    document.getElementById("deck").style.borderColor =
-      socket.id === currentPlayer.id ? "green" : "white";
+    if (socket.id === currentPlayer.id) {
+      if (currentCard === null) {
+        document.getElementById("deck").classList.add("playable");
+        document.getElementById("currentCard").classList.remove("threat");
+      } else {
+        document.getElementById("deck").classList.remove("playable");
+        document.getElementById("currentCard").classList.add("threat");
+      }
+    }
 
     // enabling and disabling buttons according to game state and whose turn it is
     if (currentCard && myTurn) {
@@ -131,7 +138,7 @@ const reset = () => socket.emit("reset");
 const updateCardDisplay = (card) =>
   (document.getElementById("currentCard").innerHTML = card
     ? `<span class='bold'>${card.power}</span> ${card.name}`
-    : "-");
+    : "");
 
 // Modal functions
 // Get the modal

@@ -107,9 +107,10 @@ const itemTemplate = (item) => {
     }${item.passive.bonusScore}</span>`;
   }
   return `<div class="itemCard">
+  <div class="card__caption">
 <div class="itemCardHeader">${item.name}</div>
 <div class="itemCardBody">${bonusHP}${bonusScore}${bonusRun}${ignoreFamily}${ignorePower}${lifestealFamily}${lifestealPower}</div>
-</div>`;
+</div></div>`;
 };
 
 const nameFromFamilyId = (id, plural) => {

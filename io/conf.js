@@ -28,11 +28,11 @@ module.exports = function (server) {
     // triggers before game effects
     for (const id in players) {
       players[id].items.forEach((item) => {
-        if (item.passive.hasOwnProperty("bonusHP"))
+        if (item.passive && item.passive.hasOwnProperty("bonusHP"))
           players[id].hp += item.passive.bonusHP;
-        if (item.passive.hasOwnProperty("bonusScore"))
+        if (item.passive && item.passive.hasOwnProperty("bonusScore"))
           players[id].score += item.passive.bonusScore;
-        if (item.passive.hasOwnProperty("bonusRun"))
+        if (item.passive && item.passive.hasOwnProperty("bonusRun"))
           players[id].bonusRun += item.passive.bonusRun;
       });
     }
@@ -124,7 +124,9 @@ module.exports = function (server) {
         } else {
           io.emit(
             "info",
-            `${currentCard.name} est tanké par ${players[socket.id].name}`,
+            `${currentCard.name} est tanké par ${players[socket.id].name}, ${
+              players[socket.id].hp
+            } PV restants`,
           );
           mobBeatenByPlayer(socket.id);
           updateAll();
@@ -264,6 +266,7 @@ module.exports = function (server) {
         }
         passToNextPlayer();
       }
+      io.emit("info", `Le jet de fuite n'est pas suffisant !`);
     };
     const findCurrentPlayer = () =>
       Object.values(players).find((pl) => pl.current);

@@ -14,6 +14,19 @@ module.exports = function (server) {
   let fleeRoll = null;
 
   const start = () => {
+    // distribute items
+    let items = shuffle(itemsList);
+    let nbItemsEach = nbStartingItems(Object.values(players).length);
+    let it;
+    for (const id in players) {
+      players[id].items = [];
+      for (let i = 0; i < nbItemsEach; i++) {
+        it = drawCard(items);
+        players[id].items.push(it);
+      }
+    }
+    console.log(players);
+    //misc
     deck = shuffle(buildDeck(cardsList));
     game.state = "game";
     game.turn = 1;
@@ -240,3 +253,17 @@ const buildDeck = (list) => {
 };
 const rollDice = (min = 1, max = 6, mod = 0) =>
   min + Math.floor(Math.random() * (max - min + 1)) + mod;
+const nbStartingItems = (nbPl) => {
+  switch (nbPl) {
+    case 1:
+      return 10;
+    case 2:
+      return 8;
+    case 3:
+      return 6;
+    case 4:
+      return 6;
+    default:
+      return 5;
+  }
+};

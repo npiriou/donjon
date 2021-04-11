@@ -11,7 +11,12 @@
       <!-- <div id="whoseTurn"></div> -->
       <div id="divReadyCheck">
         <label for="readyCheck">Ready ?</label>
-        <input type="checkbox" id="readyCheck" onclick="ready()" />
+        <input
+          type="checkbox"
+          id="readyCheck"
+          onclick="ready()"
+          data-micromodal-trigger="modal-1"
+        />
       </div>
       <div id="game-container">
         <div id="centralcards">
@@ -26,12 +31,21 @@
           <button id="fightBtn" class="btn" onclick="fight()">Tanker</button>
           <button id="passBtn" class="btn" onclick="pass()">Passer</button>
           <button id="fleeBtn" class="btn" onclick="flee()">Fuir</button>
+          <!-- Trigger/Open The Modal -->
+          <button id="itemsBtn" class="btn">Mes Objets</button>
         </div>
         <div id="info"></div>
       </div>
     </div>
-    <!-- <button class="noselect" id="mute" onclick="enableMute()">mute</button> -->
 
+    <!-- The Modal -->
+    <div id="itemsModal" class="modal">
+      <!-- Modal content -->
+      <div class="modal-content">
+        <span id="closeModalItems">&times;</span>
+        <div id="modal-content-items">Some text in the Modal..</div>
+      </div>
+    </div>
     <script src="/socket.io/socket.io.js"></script>
     <script src="/game.js"></script>
     <script src="/chat.js"></script>

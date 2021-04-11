@@ -56,3 +56,95 @@ socket.on("too late", () => {
     "Désolé la partie a déjà commencé, reviens plus tard...";
 });
 const newInfo = (inf) => (document.getElementById("info").innerText = inf);
+
+const itemTemplate = (item) => {
+  let bonusHP = "";
+  let bonusRun = "";
+  let ignoreFamily = "";
+  let ignorePower = "";
+  let bonusScore = "";
+  let lifestealPower = "";
+  let lifestealFamily = "";
+
+  if (item.passive.hasOwnProperty("bonusHP"))
+    // print bonus HP
+    bonusHP = `<span class="itemCardBodySpan-bonusPV">PV ${
+      item.passive.bonusHP > 0 ? "+" : ""
+    }${item.passive.bonusHP}</span>`;
+  if (item.passive.hasOwnProperty("bonusRun"))
+    // print bonusRun
+    bonusRun = `<span class="itemCardBodySpan-bonusRun">Jet de fuite ${
+      item.passive.bonusRun > 0 ? "+" : ""
+    }${item.passive.bonusRun}</span>`;
+  if (item.passive.hasOwnProperty("ignoreFamilyId")) {
+    // print ignore family
+    ignoreFamily = `<span class="itemCardBodySpan-ignoreFamily">Ignore les ${item.passive.ignoreFamilyId
+      .map((id) => nameFromFamilyId(id, true))
+      .join(" et ")}</span>`;
+  }
+  if (item.passive.hasOwnProperty("lifestealFamilyId")) {
+    // print ignore family
+    lifestealFamily = `<span class="itemCardBodySpan-lifestealFamily">Absorbe les ${item.passive.lifestealFamilyId
+      .map((id) => nameFromFamilyId(id, true))
+      .join(" et ")}</span>`;
+  }
+  if (item.passive.hasOwnProperty("ignorePower")) {
+    // print ignore power
+    ignorePower = `<span class="itemCardBodySpan-ignorePower">Ignore les Monstres de puissance ${item.passive.ignorePower.join(
+      " et ",
+    )}</span>`;
+  }
+  if (item.passive.hasOwnProperty("lifestealPower")) {
+    // print ignore power
+    lifestealPower = `<span class="itemCardBodySpan-lifestealPower">Absorbe les Monstres de puissance ${item.passive.lifestealPower.join(
+      " et ",
+    )}</span>`;
+  }
+  if (item.passive.hasOwnProperty("bonusScore")) {
+    // print bonus Score
+    bonusScore = `<span class="itemCardBodySpan-bonusScore">Score final ${
+      item.passive.bonusScore > 0 ? "+" : ""
+    }${item.passive.bonusScore}</span>`;
+  }
+  return `<div class="itemCard">
+<div class="itemCardHeader">${item.name}</div>
+<div class="itemCardBody">${bonusHP}${bonusScore}${bonusRun}${ignoreFamily}${ignorePower}${lifestealFamily}${lifestealPower}</div>
+</div>`;
+};
+
+const nameFromFamilyId = (id, plural) => {
+  let name;
+  switch (id) {
+    case 0:
+      name = "Rat";
+      break;
+    case 1:
+      name = "Gobelin";
+      break;
+    case 2:
+      name = "Squelette";
+      break;
+    case 3:
+      name = "Orc";
+      break;
+    case 4:
+      name = "Vampire";
+      break;
+    case 5:
+      name = "Golem";
+      break;
+    case 6:
+      name = "Liche";
+      break;
+    case 7:
+      name = "Démon";
+      break;
+    case 9:
+      name = "Dragon";
+      break;
+    default:
+      name = "???";
+      break;
+  }
+  return plural ? name + "s" : name;
+};

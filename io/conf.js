@@ -25,7 +25,18 @@ module.exports = function (server) {
         players[id].items.push(it);
       }
     }
-    console.log(players);
+    // triggers before game effects
+    for (const id in players) {
+      players[id].items.forEach((item) => {
+        if (item.passive.hasOwnProperty("bonusHP"))
+          players[id].hp += item.passive.bonusHP;
+        if (item.passive.hasOwnProperty("bonusScore"))
+          players[id].score += item.passive.bonusScore;
+        if (item.passive.hasOwnProperty("bonusRun"))
+          players[id].bonusRun += item.passive.bonusRun;
+      });
+    }
+
     //misc
     deck = shuffle(buildDeck(cardsList));
     game.state = "game";
@@ -50,13 +61,14 @@ module.exports = function (server) {
         ready: false,
         score: 0,
         name: "",
-        hp: 20,
+        hp: 3,
         dead: false,
         run: false,
         id: socket.id,
         current: false,
         beaten: [],
         drawThisTurn: 0,
+        bonusRun: 0,
       };
 
       // CHAT PART
@@ -94,8 +106,8 @@ module.exports = function (server) {
       }
     });
     socket.on("fight", () => {
-      // first check if it's the player's turn
-      if (socket.id === findCurrentPlayer().id) {
+      // first check if it's the player's turn and there is a mob to fight
+      if (socket.id === findCurrentPlayer().id && currentCard !== null) {
         players[socket.id].hp -= currentCard.power;
         if (players[socket.id].hp <= 0) {
           players[socket.id].hp = 0;
@@ -110,14 +122,11 @@ module.exports = function (server) {
 
           updateAll();
         } else {
-          players[socket.id].beaten.push(currentCard);
-          currentCard = null;
-          if (deck.length === 0) {
-            gameOver();
-            return;
-          }
-          game.state = "game";
-          io.emit("fight over");
+          io.emit(
+            "info",
+            `${currentCard.name} est tanké par ${players[socket.id].name}`,
+          );
+          mobBeatenByPlayer(socket.id);
           updateAll();
         }
       }
@@ -134,13 +143,14 @@ module.exports = function (server) {
       }
     });
     socket.on("flee", () => {
-      let currentPlayer = Object.values(players).find((pl) => pl.current);
+      let currentPlayer = findCurrentPlayer();
       if (
-        socket.id === findCurrentPlayer().id &&
+        fleeRoll === null &&
+        socket.id === currentPlayer.id &&
         ((currentCard === null && currentPlayer.drawThisTurn > 0) ||
           (currentCard !== null && currentPlayer.drawThisTurn === 0))
       ) {
-        fleeRoll = rollDice();
+        fleeRoll = rollDice(1, 6, currentPlayer.bonusRun);
         io.emit("flee roll", fleeRoll, currentPlayer);
         // draw regularly if no current card
         if (currentCard !== null) {
@@ -148,6 +158,62 @@ module.exports = function (server) {
         }
 
         updateAll();
+      }
+    });
+    socket.on("use item passive", (itemNumber) => {
+      /*check if
+        -players turn
+        -player has item number itemnumber 
+              - item is not broken 
+              -item has passive
+              -passive does something in the current state */
+      if (
+        socket.id === findCurrentPlayer().id &&
+        players[socket.id].items[itemNumber] &&
+        !players[socket.id].items[itemNumber].broken &&
+        Object.keys(players[socket.id].items[itemNumber].passive).length > 0
+      ) {
+        // loops over passives and tries to use one, hopefully most item have only one or two
+        let passives = players[socket.id].items[itemNumber].passive;
+        if (currentCard !== null) {
+          for (const [key, value] of Object.entries(passives)) {
+            if (
+              //if mob is ignored either due to its power or family
+              (key.includes("ignorePower") &&
+                value.includes(currentCard.power)) ||
+              (key.includes("ignoreFamilyId") &&
+                value.includes(currentCard.familyId))
+            ) {
+              socket.emit("close modal");
+              io.emit(
+                "info",
+                `${currentCard.name} est ignoré par ${
+                  players[socket.id].name
+                } avec ${players[socket.id].items[itemNumber].name}`,
+              );
+              mobBeatenByPlayer(socket.id);
+              break;
+            } else if (
+              //if mob is lifestealed either due to its power or family
+              (key.includes("lifestealPower") &&
+                value.includes(currentCard.power)) ||
+              (key.includes("lifestealFamilyId") &&
+                value.includes(currentCard.familyId))
+            ) {
+              socket.emit("close modal");
+              players[socket.id].hp += currentCard.power;
+              io.emit(
+                "info",
+                `${currentCard.name} est absorbé par ${
+                  players[socket.id].name
+                } avec ${players[socket.id].items[itemNumber].name}`,
+              );
+              mobBeatenByPlayer(socket.id);
+              break;
+            }
+          }
+          updateAll();
+        }
       }
     });
 
@@ -183,11 +249,9 @@ module.exports = function (server) {
 
       // filter
       order = order.filter((pl) => !pl.dead && !pl.run);
-
-      console.log(`updated order`);
-      console.log(order);
     };
     const tryToRun = (player, roll) => {
+      fleeRoll = null;
       if (roll >= currentCard.power) {
         // player runs away successfully !!
         player.run = true;
@@ -208,27 +272,29 @@ module.exports = function (server) {
   const gameOver = () => {
     game.state = "lobby";
     let result = "";
+
     if (Object.values(players).every((pl) => pl.dead)) {
       result = "Tout le monde est mort :(";
     }
-    let contenders = Object.values(players).filter((pl) => !pl.dead);
-    let winner = contenders.find(
-      (p) =>
-        p.beaten.length ==
-        Math.max.apply(
-          Math,
-          contenders.map((p) => p.beaten.length),
-        ),
-    );
+    // let contenders = Object.values(players).filter((pl) => !pl.dead);
 
     if (Object.values(players).every((pl) => pl.dead || pl.run)) {
-      winner;
-      result = `Le donjon n'a pas été poncé`;
+      result = `<div>Le donjon n'a pas été poncé</div>`;
     }
     if (deck.length === 0) {
-      result = `Le donjon a été poncé`;
+      result = `<div>Le donjon a été poncé</div>`;
     }
     io.emit("game over", result);
+  };
+  const mobBeatenByPlayer = (id) => {
+    players[id].beaten.push(currentCard);
+    currentCard = null;
+    if (deck.length === 0) {
+      gameOver();
+      return;
+    }
+    game.state = "game";
+    io.emit("fight over");
   };
 };
 

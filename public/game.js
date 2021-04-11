@@ -1,19 +1,23 @@
 const socket = io();
+
 let myTurn = false;
 let currentCard = null;
 let game;
 let players;
-
 socket.on("lists", (listPlayers, gameUpd) => {
   game = gameUpd;
   players = listPlayers;
+
   writePlayers(listPlayers, game);
   if (game.state.includes("game")) {
     let currentPlayer = listPlayers.find((pl) => pl.current);
     myTurn = socket.id === currentPlayer.id;
+
+    // changing display for the curent player
     document.getElementById("deck").style.borderColor =
       socket.id === currentPlayer.id ? "green" : "white";
 
+    // enabling and disabling buttons according to game state and whose turn it is
     if (currentCard && myTurn) {
       document.getElementById("fightBtn").disabled = false;
       document.getElementById("passBtn").disabled = true;
@@ -24,6 +28,8 @@ socket.on("lists", (listPlayers, gameUpd) => {
         (currentCard !== null && currentPlayer.drawThisTurn === 0))
     )
       document.getElementById("fleeBtn").disabled = false;
+    if (currentCard === null)
+      document.getElementById("fightBtn").disabled = true;
   }
 });
 
@@ -34,6 +40,7 @@ socket.on("game starts", (listPlayers, game) => {
   Array.from(document.getElementById("mainbuttons").children).forEach(
     (btn) => (btn.disabled = true),
   );
+  document.getElementById("itemsBtn").disabled = false;
 });
 socket.on("card draw", (card) => {
   currentCard = card;
@@ -53,6 +60,7 @@ socket.on("fight over", () => {
     document.getElementById("fleeBtn").disabled = false;
   }
 });
+socket.on("info", (info) => newInfo(info));
 socket.on("flee roll", (roll, currentPlayer) =>
   newInfo(`Le jet de fuite de ${currentPlayer.name} est de ${roll}`),
 );
@@ -67,7 +75,16 @@ socket.on("player dead", (player) =>
   ),
 );
 socket.on("game over", (result) => {
-  document.getElementById("game-container").innerText = result;
+  let scoresTable =
+    "<div>Scores finaux</div><ul>" +
+    players.map(
+      (pl) =>
+        `<li>${pl.name} : ${pl.score + pl.beaten.length} ${
+          pl.dead ? "(mort)" : pl.run ? "(fuit)" : "(vivant)"
+        }</li>`,
+    ) +
+    "</ul>";
+  document.getElementById("game-container").innerHTML = result + scoresTable;
 });
 const draw = () => {
   if (myTurn && !game.state.includes("fight")) {
@@ -75,7 +92,7 @@ const draw = () => {
   }
 };
 const fight = () => {
-  if (myTurn) {
+  if (myTurn && currentCard !== null) {
     socket.emit("fight");
     document.getElementById("fightBtn").disabled = true;
     document.getElementById("fleeBtn").disabled = true;
@@ -94,8 +111,19 @@ const flee = () => {
   //(i.e someone flee or die before, leaving the monster here)
   if (myTurn) {
     socket.emit("flee");
-    document.getElementById("passBtn").style.display = "none";
-    document.getElementById("fleeBtn").style.display = "none";
+    document.getElementById("passBtn").disable = true;
+    document.getElementById("fleeBtn").disable = true;
+  }
+};
+
+const usePassiveItem = (player, itemNumber) => {
+  if (
+    myTurn &&
+    player.items[itemNumber] &&
+    !player.items[itemNumber].broken &&
+    player.items[itemNumber].passive
+  ) {
+    socket.emit("use item passive", itemNumber);
   }
 };
 
@@ -104,3 +132,36 @@ const updateCardDisplay = (card) =>
   (document.getElementById("currentCard").innerHTML = card
     ? `<span class='bold'>${card.power}</span> ${card.name}`
     : "-");
+
+// Modal functions
+// Get the modal
+const modal = document.getElementById("itemsModal");
+
+// When the user clicks the button, open the modal
+document.getElementById("itemsBtn").onclick = () => {
+  // displaying items in the modal
+  const itemsList = document.getElementById("modal-content-items");
+  let me = players.find((p) => p.id === socket.id);
+  let content = me.items.map((item) => itemTemplate(item));
+  itemsList.innerHTML = content.join("");
+
+  for (let i = 0; i < itemsList.children.length; i++) {
+    itemsList.children[i].onclick = () => {
+      usePassiveItem(me, i);
+    };
+  }
+  modal.style.display = "block";
+};
+
+// When the user clicks on <span> (x), close the modal
+document.getElementById("closeModalItems").onclick = () =>
+  (modal.style.display = "none");
+
+// When the user clicks anywhere outside of the modal, close it
+window.onclick = (event) => {
+  if (event.target == modal) {
+    modal.style.display = "none";
+  }
+};
+// When an item is successfully used, close modal
+socket.on("close modal", () => (modal.style.display = "none"));

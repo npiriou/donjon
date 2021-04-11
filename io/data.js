@@ -1,71 +1,16 @@
 const cardsList = [
-  {
-    id: 0,
-    power: 0,
-    name: "Rat",
-    baseAmount: 4,
-  },
-  {
-    id: 1,
-    power: 1,
-    name: "Gobelin",
-    baseAmount: 4,
-  },
-  {
-    id: 2,
-    power: 2,
-    name: "Squelette",
-    baseAmount: 4,
-  },
-  {
-    id: 3,
-    power: 3,
-    name: "Orc",
-    baseAmount: 4,
-  },
-  {
-    id: 4,
-    power: 4,
-    name: "Vampire",
-    baseAmount: 4,
-  },
-  {
-    id: 5,
-    power: 5,
-    name: "Golem",
-    baseAmount: 4,
-  },
-  {
-    id: 6,
-    power: 6,
-    name: "Liche",
-    baseAmount: 2,
-  },
-  {
-    id: 7,
-    power: 7,
-    name: "Démon",
-    baseAmount: 2,
-  },
-  {
-    id: 9,
-    power: 9,
-    name: "Dragon",
-    baseAmount: 2,
-  },
-  {
-    id: 10,
-    power: 0,
-    name: "Fée",
-    baseAmount: 1,
-  },
+  { familyId: 0, id: 0, power: 0, name: "Rat", baseAmount: 4 },
+  { familyId: 1, id: 1, power: 1, name: "Gobelin", baseAmount: 4 },
+  { familyId: 2, id: 2, power: 2, name: "Squelette", baseAmount: 4 },
+  { familyId: 3, id: 3, power: 3, name: "Orc", baseAmount: 4 },
+  { familyId: 4, id: 4, power: 4, name: "Vampire", baseAmount: 4 },
+  { familyId: 5, id: 5, power: 5, name: "Golem", baseAmount: 4 },
+  { familyId: 6, id: 6, power: 6, name: "Liche", baseAmount: 2 },
+  { familyId: 7, id: 7, power: 7, name: "Démon", baseAmount: 2 },
+  { familyId: 9, id: 9, power: 9, name: "Dragon", baseAmount: 2 },
+  { familyId: 10, id: 10, power: 0, name: "Fée", baseAmount: 1 },
 ];
-// itemsList template
-// {
-//   name: "",
-//   passive: { bonusHP: 0, ignorePower: [], ignoreId: [] },
-//   active: {},
-// },
+
 const itemsList = [
   {
     name: "Mamie",
@@ -79,7 +24,7 @@ const itemsList = [
   },
   {
     name: "Torche",
-    passive: { ignoreId: [1, 2, 3] },
+    passive: { ignoreFamilyId: [1, 2, 3] },
     active: {},
   },
   {
@@ -114,7 +59,7 @@ const itemsList = [
   },
   {
     name: "Lance Dragon",
-    passive: { ignoreId: [9] },
+    passive: { ignoreFamilyId: [9] },
     active: {},
   },
   {
@@ -144,7 +89,7 @@ const itemsList = [
   },
   {
     name: "Patte du Rat Momie",
-    passive: { ignoreId: [0, 6] },
+    passive: { ignoreFamilyId: [0, 6] },
     active: {},
   },
   {
@@ -154,28 +99,28 @@ const itemsList = [
   },
   {
     name: "Marteau de Guerre",
-    passive: { ignoreId: [5] },
+    passive: { ignoreFamilyId: [5] },
     active: {},
   },
   {
     name: "Livre Sacré",
-    passive: { bonusHP: 2, ignoreId: [2] },
+    passive: { bonusHP: 2, ignoreFamilyId: [2] },
     active: {},
   },
 
   {
     name: "Sceptre Sanglant",
-    passive: { lifeStealId: [4] },
+    passive: { lifestealFamilyId: [4] },
     active: {},
   },
   {
     name: "Fléau de Liche",
-    passive: { lifeStealId: [6] },
+    passive: { lifestealFamilyId: [6] },
     active: {},
   },
   {
     name: "Anneau de Pouvoir",
-    passive: { lifeStealId: [1, 2] },
+    passive: { lifestealPower: [1, 2] },
     active: {},
   },
   {

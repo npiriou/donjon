@@ -10,6 +10,7 @@ socket.on("lists", (listPlayers, gameUpd) => {
 
   writePlayers(listPlayers, game);
   if (game.state.includes("game")) {
+    displayItems();
     let currentPlayer = listPlayers.find((pl) => pl.current);
     myTurn = socket.id === currentPlayer.id;
 
@@ -22,6 +23,11 @@ socket.on("lists", (listPlayers, gameUpd) => {
         document.getElementById("deck").classList.remove("playable");
         document.getElementById("currentCard").classList.add("threat");
       }
+    } else {
+      document.getElementById("currentCard").classList.remove("threat");
+      document.getElementById("deck").classList.remove("playable");
+      document.getElementById("passBtn").disabled = true;
+      document.getElementById("fleeBtn").disabled = true;
     }
 
     // enabling and disabling buttons according to game state and whose turn it is
@@ -91,7 +97,8 @@ socket.on("game over", (result) => {
         }</li>`,
     ) +
     "</ul>";
-  document.getElementById("game-container").innerHTML = result + scoresTable;
+  document.getElementById("game-container").innerText = "";
+  document.getElementById("finalResult").innerHTML = result + scoresTable;
 });
 const draw = () => {
   if (myTurn && !game.state.includes("fight")) {
@@ -128,9 +135,20 @@ const usePassiveItem = (player, itemNumber) => {
     myTurn &&
     player.items[itemNumber] &&
     !player.items[itemNumber].broken &&
-    player.items[itemNumber].passive
+    (Object.keys(player.items[itemNumber].passive).length > 0 ||
+      player.items[itemNumber].hasOwnProperty("passiveDescription"))
   ) {
     socket.emit("use item passive", itemNumber);
+  }
+};
+const useActiveItem = (player, itemNumber) => {
+  if (
+    myTurn &&
+    player.items[itemNumber] &&
+    !player.items[itemNumber].broken &&
+    player.items[itemNumber].hasOwnProperty("activeDescription")
+  ) {
+    socket.emit("use item active", itemNumber);
   }
 };
 
@@ -146,17 +164,7 @@ const modal = document.getElementById("itemsModal");
 
 // When the user clicks the button, open the modal
 document.getElementById("itemsBtn").onclick = () => {
-  // displaying items in the modal
-  const itemsList = document.getElementById("modal-content-items");
-  let me = players.find((p) => p.id === socket.id);
-  let content = me.items.map((item) => itemTemplate(item));
-  itemsList.innerHTML = content.join("");
-
-  for (let i = 0; i < itemsList.children.length; i++) {
-    itemsList.children[i].onclick = () => {
-      usePassiveItem(me, i);
-    };
-  }
+  displayItems();
   modal.style.display = "block";
 };
 
@@ -170,5 +178,28 @@ window.onclick = (event) => {
     modal.style.display = "none";
   }
 };
+
+// displaying items in the modal
+const displayItems = () => {
+  const itemsList = document.getElementById("modal-content-items");
+  let me = players.find((p) => p.id === socket.id);
+  let content = me.items.map((item) => itemTemplate(item));
+  itemsList.innerHTML = content.join("");
+  for (let i = 0; i < itemsList.children.length; i++) {
+    if (itemsList.children[i].getElementsByClassName("itemPassive").length > 0)
+      itemsList.children[i].getElementsByClassName(
+        "itemPassive",
+      )[0].onclick = () => {
+        usePassiveItem(me, i);
+      };
+    if (itemsList.children[i].getElementsByClassName("itemActive").length > 0)
+      itemsList.children[i].getElementsByClassName(
+        "itemActive",
+      )[0].onclick = () => {
+        useActiveItem(me, i);
+      };
+  }
+};
+
 // When an item is successfully used, close modal
 socket.on("close modal", () => (modal.style.display = "none"));

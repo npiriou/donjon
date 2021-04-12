@@ -69,6 +69,7 @@ module.exports = function (server) {
         beaten: [],
         drawThisTurn: 0,
         bonusRun: 0,
+        status: [],
       };
 
       // CHAT PART
@@ -110,17 +111,7 @@ module.exports = function (server) {
       if (socket.id === findCurrentPlayer().id && currentCard !== null) {
         players[socket.id].hp -= currentCard.power;
         if (players[socket.id].hp <= 0) {
-          players[socket.id].hp = 0;
-          players[socket.id].dead = true;
-          io.emit("player dead", players[socket.id]);
-          updateAll();
-          if (Object.values(players).every((pl) => pl.dead || pl.run)) {
-            gameOver();
-            return;
-          }
-          passToNextPlayer();
-
-          updateAll();
+          onDeath(socket.id);
         } else {
           io.emit(
             "info",
@@ -163,6 +154,7 @@ module.exports = function (server) {
       }
     });
     socket.on("use item passive", (itemNumber) => {
+      let item = players[socket.id].items[itemNumber];
       /*check if
         -players turn
         -player has item number itemnumber 
@@ -171,12 +163,12 @@ module.exports = function (server) {
               -passive does something in the current state */
       if (
         socket.id === findCurrentPlayer().id &&
-        players[socket.id].items[itemNumber] &&
-        !players[socket.id].items[itemNumber].broken &&
-        Object.keys(players[socket.id].items[itemNumber].passive).length > 0
+        item &&
+        !item.broken &&
+        Object.keys(item.passive).length > 0
       ) {
         // loops over passives and tries to use one, hopefully most item have only one or two
-        let passives = players[socket.id].items[itemNumber].passive;
+        let passives = item.passive;
         if (currentCard !== null) {
           for (const [key, value] of Object.entries(passives)) {
             if (
@@ -191,7 +183,7 @@ module.exports = function (server) {
                 "info",
                 `${currentCard.name} est ignoré par ${
                   players[socket.id].name
-                } avec ${players[socket.id].items[itemNumber].name}`,
+                } avec ${item.name}`,
               );
               mobBeatenByPlayer(socket.id);
               break;
@@ -208,17 +200,122 @@ module.exports = function (server) {
                 "info",
                 `${currentCard.name} est absorbé par ${
                   players[socket.id].name
-                } avec ${players[socket.id].items[itemNumber].name}`,
+                } avec ${item.name} (+${currentCard.power} PV)`,
               );
               mobBeatenByPlayer(socket.id);
               break;
+            } else if (key.includes("ignoreFct")) {
+              //if item has an ignore fct
+              let rollDiceForItem = rollDice(1, 6);
+              if (
+                value(currentCard.power, rollDiceForItem) &&
+                !item.alreadyUsed
+              ) {
+                //if mob is killed
+                socket.emit("close modal");
+                io.emit(
+                  "info",
+                  `${currentCard.name} est ignoré par ${
+                    players[socket.id].name
+                  } avec ${item.name} sur un jet de ${rollDiceForItem}`,
+                );
+                mobBeatenByPlayer(socket.id);
+                break;
+              } else {
+                if (!item.alreadyUsed) {
+                  io.emit(
+                    "info",
+                    `${
+                      players[socket.id].name
+                    }fait un jet de ${rollDiceForItem} avec ${
+                      item.name
+                    }, ce n'est pas suffisant`,
+                  );
+                }
+                item.alreadyUsed = true;
+              }
             }
           }
           updateAll();
         }
       }
     });
+    socket.on("use item active", (itemNumber) => {
+      let item = players[socket.id].items[itemNumber];
+      /*check if
+        -players turn
+        -player has item number itemnumber 
+              - item is not broken 
+              -item has act
+              -act does something in the current state */
+      if (
+        socket.id === findCurrentPlayer().id &&
+        item &&
+        !item.broken &&
+        Object.keys(item.active).length > 0
+      ) {
+        io.emit(
+          //emit a efault messages that will disappear instantly if anything happens
+          "info",
+          `⚡  ${players[socket.id].name} active ${item.name}`,
+        );
+        // loops over actives and tries to use one, hopefully most item have only one or two
+        let actives = item.active;
+        for (const [key, value] of Object.entries(actives)) {
+          // actif changement de PVs du joueur
+          if (key.includes("changeHP")) {
+            let hpBefore = players[socket.id].hp;
+            let hpAfter = value(players[socket.id].hp);
 
+            players[socket.id].hp = hpAfter;
+            io.emit(
+              "info",
+              `⚡  ${players[socket.id].name} active ${
+                item.name
+              }, ses PV passent de ${hpBefore} à ${hpAfter}`,
+            );
+          }
+
+          //actif passe tour
+          if (key.includes("passTurn")) {
+            passToNextPlayer();
+          }
+          // si le joueur est en combat
+          if (currentCard !== null) {
+            if (
+              //if mob is ignored due to its power
+              key.includes("ignorePower") &&
+              value(currentCard.power) //  ex value:(x)=>x%2===1 for ignore odd
+            ) {
+              socket.emit("close modal");
+              io.emit(
+                "info",
+                `${currentCard.name} est ignoré par ${
+                  players[socket.id].name
+                } avec ${item.name}`,
+              );
+              mobBeatenByPlayer(socket.id);
+            } else if (
+              //if mob is lifestealed  due to its power
+              key.includes("lifestealPower") &&
+              value(currentCard.power)
+            ) {
+              socket.emit("close modal");
+              players[socket.id].hp += currentCard.power;
+              io.emit(
+                "info",
+                `⚡ ${currentCard.name} est absorbé par ${
+                  players[socket.id].name
+                } avec ${item.name} (+${currentCard.power} PV)`,
+              );
+              mobBeatenByPlayer(socket.id);
+            }
+          }
+        }
+        onBreaks(item, socket.id);
+        updateAll();
+      }
+    });
     socket.on("disconnect", (reason) => {
       console.log(`a player disconnected because ${reason}`);
       delete players[socket.id];
@@ -233,6 +330,29 @@ module.exports = function (server) {
     function updateAll() {
       io.emit("lists", Object.values(players), game);
     }
+    const onBreaks = (item, id) => {
+      item.broken = true;
+      if (item.passive && item.passive.hasOwnProperty("bonusHP"))
+        players[id].hp -= item.passive.bonusHP;
+      if (item.passive && item.passive.hasOwnProperty("bonusScore"))
+        players[id].score -= item.passive.bonusScore;
+      if (item.passive && item.passive.hasOwnProperty("bonusRun"))
+        players[id].bonusRun -= item.passive.bonusRun;
+
+      if (players[id].hp <= 0) onDeath(id);
+    };
+    const onDeath = (id) => {
+      players[id].hp = 0;
+      players[id].dead = true;
+      io.emit("player dead", players[id]);
+      updateAll();
+      if (Object.values(players).every((pl) => pl.dead || pl.run)) {
+        gameOver();
+        return;
+      }
+      passToNextPlayer();
+      updateAll();
+    };
     const passToNextPlayer = () => {
       // cant pass if alone
       if (order.length <= 1) return;
@@ -251,6 +371,7 @@ module.exports = function (server) {
 
       // filter
       order = order.filter((pl) => !pl.dead && !pl.run);
+      console.log("current", order[currentIndex].name);
     };
     const tryToRun = (player, roll) => {
       fleeRoll = null;
@@ -266,10 +387,13 @@ module.exports = function (server) {
         }
         passToNextPlayer();
       }
-      io.emit("info", `Le jet de fuite n'est pas suffisant !`);
+      // io.emit("info", `Le jet de fuite n'est pas suffisant !`);
     };
-    const findCurrentPlayer = () =>
-      Object.values(players).find((pl) => pl.current);
+    const findCurrentPlayer = () => {
+      let current = Object.values(players).find((pl) => pl.current);
+      if (current === undefined) console.log("no current found", players);
+      return current;
+    };
   });
 
   const gameOver = () => {
@@ -290,6 +414,10 @@ module.exports = function (server) {
     io.emit("game over", result);
   };
   const mobBeatenByPlayer = (id) => {
+    Object.values(players).forEach((pl) => {
+      pl.items.forEach((it) => (it.alreadyUsed = false));
+    });
+    fleeRoll = null;
     players[id].beaten.push(currentCard);
     currentCard = null;
     if (deck.length === 0) {

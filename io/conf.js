@@ -43,15 +43,36 @@ module.exports = function (server) {
     game.turn = 1;
     // random player order
     order = shuffle(Object.values(players));
-    for (let i = 0; i < order.length; i++) {
-      order[i].order = i;
-    }
+    // for (let i = 0; i < order.length; i++) {
+    //   order[i].order = i;
+    // }
     order[0].current = true;
   };
   const reset = () => {
     game.state = "lobby";
     game.turn = 0;
-    players = {};
+    currentCard = null;
+    order = [];
+    fleeRoll = null;
+    for (const id in players) {
+      if (Object.hasOwnProperty.call(players, id)) {
+        players[id] = {
+          //keeps name and id
+          ...players[id],
+          ready: false,
+          score: 0,
+          hp: 3,
+          dead: false,
+          run: false,
+          current: false,
+          beaten: [],
+          drawThisTurn: 0,
+          bonusRun: 0,
+          status: [],
+          items: [],
+        };
+      }
+    }
     io.emit("reset");
   };
 
@@ -80,6 +101,8 @@ module.exports = function (server) {
         updateAll();
       });
       socket.on("ready", (ready) => {
+        if (!game.state.includes("lobby")) return;
+
         players[socket.id].ready = ready;
         if (Object.values(players).every((pl) => pl.ready)) {
           start();
@@ -93,6 +116,8 @@ module.exports = function (server) {
     }
 
     socket.on("draw", () => {
+      if (game.state.includes("lobby")) return;
+
       // first check if it's the player's turn
       if (
         socket.id === findCurrentPlayer().id &&
@@ -107,6 +132,8 @@ module.exports = function (server) {
       }
     });
     socket.on("fight", () => {
+      if (game.state.includes("lobby")) return;
+
       // first check if it's the player's turn and there is a mob to fight
       if (socket.id === findCurrentPlayer().id && currentCard !== null) {
         players[socket.id].hp -= currentCard.power;
@@ -127,6 +154,8 @@ module.exports = function (server) {
     });
 
     socket.on("pass", () => {
+      if (game.state.includes("lobby")) return;
+
       if (
         !game.state.includes("fight") &&
         players[socket.id].drawThisTurn > 0
@@ -136,11 +165,13 @@ module.exports = function (server) {
       }
     });
     socket.on("flee", () => {
+      if (game.state.includes("lobby")) return;
+
       let currentPlayer = findCurrentPlayer();
       if (
         fleeRoll === null &&
         socket.id === currentPlayer.id &&
-        ((currentCard === null && currentPlayer.drawThisTurn > 0) ||
+        (currentCard === null ||
           (currentCard !== null && currentPlayer.drawThisTurn === 0))
       ) {
         fleeRoll = rollDice(1, 6, currentPlayer.bonusRun);
@@ -154,6 +185,8 @@ module.exports = function (server) {
       }
     });
     socket.on("use item passive", (itemNumber) => {
+      if (game.state.includes("lobby")) return;
+
       let item = players[socket.id].items[itemNumber];
       /*check if
         -players turn
@@ -205,29 +238,34 @@ module.exports = function (server) {
               mobBeatenByPlayer(socket.id);
               break;
             } else if (key.includes("ignoreFct")) {
-              //if item has an ignore fct
-              let rollDiceForItem = rollDice(1, 6);
-              if (
-                value(currentCard.power, rollDiceForItem) &&
-                !item.alreadyUsed
-              ) {
-                //if mob is killed
-                socket.emit("close modal");
-                io.emit(
-                  "info",
-                  `${currentCard.name} est ignoré par ${
-                    players[socket.id].name
-                  } avec ${item.name} sur un jet de ${rollDiceForItem}`,
-                );
-                mobBeatenByPlayer(socket.id);
-                break;
-              } else {
-                if (!item.alreadyUsed) {
+              //if item has an ignore fct: (power,dice) => [ignored,broken]
+              const rollDiceForItem = rollDice(1, 6);
+              const [ignored, broken] = value(
+                currentCard.power,
+                rollDiceForItem,
+              );
+              if (!item.alreadyUsed) {
+                if (broken) {
+                  onBreaks(item, socket.id);
+                }
+                if (ignored) {
+                  //if mob is killed
+                  socket.emit("close modal");
+                  io.emit(
+                    "info",
+                    `${currentCard.name} est ignoré par ${
+                      players[socket.id].name
+                    } avec ${item.name} sur un jet de ${rollDiceForItem}`,
+                  );
+                  mobBeatenByPlayer(socket.id);
+                  break;
+                } else {
+                  // if not ignored
                   io.emit(
                     "info",
                     `${
                       players[socket.id].name
-                    }fait un jet de ${rollDiceForItem} avec ${
+                    } fait un jet de ${rollDiceForItem} avec ${
                       item.name
                     }, ce n'est pas suffisant`,
                   );
@@ -241,6 +279,8 @@ module.exports = function (server) {
       }
     });
     socket.on("use item active", (itemNumber) => {
+      if (game.state.includes("lobby")) return;
+
       let item = players[socket.id].items[itemNumber];
       /*check if
         -players turn
@@ -318,8 +358,11 @@ module.exports = function (server) {
     });
     socket.on("disconnect", (reason) => {
       console.log(`a player disconnected because ${reason}`);
+      io.emit("info", `${players[socket.id].name} s'est deconnecté`);
+      if (game.state.includes("game") && socket.id === findCurrentPlayer().id)
+        passToNextPlayer();
       delete players[socket.id];
-      console.log(`${Object.values(players).length} left`);
+      console.log(`${Object.values(players).length} still in game`);
       if (Object.values(players).length <= 1 && game.state === "game") reset();
       updateAll();
     });
@@ -359,19 +402,20 @@ module.exports = function (server) {
 
       // find whos turn it is
       let currentIndex = order.findIndex((pl) => pl.current);
+
       // change
       order[currentIndex].current = false;
       if (currentIndex === order.length - 1) order[0].current = true;
       else order[1 + currentIndex].current = true;
 
-      // update whos current
-      currentIndex = order.findIndex((pl) => pl.current);
-      // reset count of cards drawThisTurn
-      order[currentIndex].drawThisTurn = 0;
-
       // filter
       order = order.filter((pl) => !pl.dead && !pl.run);
-      console.log("current", order[currentIndex].name);
+
+      // update whos current
+      currentIndex = order.findIndex((pl) => pl.current);
+
+      // reset count of cards drawThisTurn
+      order[currentIndex].drawThisTurn = 0;
     };
     const tryToRun = (player, roll) => {
       fleeRoll = null;
@@ -394,25 +438,27 @@ module.exports = function (server) {
       if (current === undefined) console.log("no current found", players);
       return current;
     };
+    const gameOver = () => {
+      let result = "";
+
+      if (Object.values(players).every((pl) => pl.dead)) {
+        result = "Tout le monde est mort :(";
+      }
+      // let contenders = Object.values(players).filter((pl) => !pl.dead);
+
+      if (Object.values(players).every((pl) => pl.dead || pl.run)) {
+        result = `<div>Le donjon n'a pas été poncé</div>`;
+      }
+      if (deck.length === 0) {
+        result = `<div>Le donjon a été poncé</div>`;
+      }
+
+      io.emit("game over", result);
+      reset();
+      updateAll();
+    };
   });
 
-  const gameOver = () => {
-    game.state = "lobby";
-    let result = "";
-
-    if (Object.values(players).every((pl) => pl.dead)) {
-      result = "Tout le monde est mort :(";
-    }
-    // let contenders = Object.values(players).filter((pl) => !pl.dead);
-
-    if (Object.values(players).every((pl) => pl.dead || pl.run)) {
-      result = `<div>Le donjon n'a pas été poncé</div>`;
-    }
-    if (deck.length === 0) {
-      result = `<div>Le donjon a été poncé</div>`;
-    }
-    io.emit("game over", result);
-  };
   const mobBeatenByPlayer = (id) => {
     Object.values(players).forEach((pl) => {
       pl.items.forEach((it) => (it.alreadyUsed = false));

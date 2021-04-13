@@ -130,9 +130,18 @@ const itemsList = [
   },
   {
     name: "Champ de Force",
-    passive: { ignoreFct: (p, dice) => dice >= 5 },
+    passive: { ignoreFct: (p, dice) => [dice >= 5] },
     active: {},
     passiveDescription: "Lance un dé, ignore le Mostre sur 5 ou plus",
+  },
+  {
+    name: "Caisse Mystère",
+    passive: {
+      ignoreFct: (p, dice) => [dice > p, dice === 1],
+    },
+    active: {},
+    passiveDescription:
+      "Lance un dé, ignore le Monstre si le résultat est supérieur à sa puissance - Sur 1 brise la Caisse",
   },
   // actives
   {

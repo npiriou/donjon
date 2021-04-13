@@ -37,7 +37,7 @@ socket.on("lists", (listPlayers, gameUpd) => {
     }
     if (
       myTurn &&
-      ((currentCard === null && currentPlayer.drawThisTurn > 0) ||
+      (currentCard === null ||
         (currentCard !== null && currentPlayer.drawThisTurn === 0))
     )
       document.getElementById("fleeBtn").disabled = false;
@@ -47,6 +47,10 @@ socket.on("lists", (listPlayers, gameUpd) => {
 });
 
 socket.on("game starts", (listPlayers, game) => {
+  myTurn = false;
+  currentCard = null;
+  document.getElementById("finalResult").style.display = "none";
+  document.getElementById("game-container").style.display = "flex";
   document.getElementById("divReadyCheck").style.display = "none";
   document.getElementById("centralcards").style.display = "flex";
   document.getElementById("mainbuttons").style.display = "flex";
@@ -87,6 +91,11 @@ socket.on("player dead", (player) =>
     `${player.name} est mort avec ${player.beaten.length} Monstres dans sa pile`,
   ),
 );
+
+socket.on("reset", () => {
+  document.getElementById("readyCheck").checked = false;
+  document.getElementById("divReadyCheck").style.display = "block";
+});
 socket.on("game over", (result) => {
   let scoresTable =
     "<div>Scores finaux</div><ul>" +
@@ -97,7 +106,8 @@ socket.on("game over", (result) => {
         }</li>`,
     ) +
     "</ul>";
-  document.getElementById("game-container").innerText = "";
+  document.getElementById("game-container").style.display = "none";
+  document.getElementById("finalResult").style.display = "block";
   document.getElementById("finalResult").innerHTML = result + scoresTable;
 });
 const draw = () => {

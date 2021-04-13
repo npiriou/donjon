@@ -58,6 +58,7 @@ socket.on("too late", () => {
 const newInfo = (inf) => (document.getElementById("info").innerText = inf);
 
 const itemTemplate = (item) => {
+  let broken = item.broken ? "broken" : "notBroken";
   let bonusHP = "";
   let bonusRun = "";
   let ignoreFamily = "";
@@ -65,6 +66,8 @@ const itemTemplate = (item) => {
   let bonusScore = "";
   let lifestealPower = "";
   let lifestealFamily = "";
+  let activeDescription = "";
+  let passiveDescription = "";
 
   if (item.passive.hasOwnProperty("bonusHP"))
     // print bonus HP
@@ -106,11 +109,35 @@ const itemTemplate = (item) => {
       item.passive.bonusScore > 0 ? "+" : ""
     }${item.passive.bonusScore}</span>`;
   }
-  return `<div class="itemCard">
-  <div class="card__caption">
-<div class="itemCardHeader">${item.name}</div>
-<div class="itemCardBody">${bonusHP}${bonusScore}${bonusRun}${ignoreFamily}${ignorePower}${lifestealFamily}${lifestealPower}</div>
-</div></div>`;
+  if (item.hasOwnProperty("passiveDescription")) {
+    passiveDescription = `<span class="itemCardBodySpan-passiveDescription">
+    ${item.passiveDescription}
+  </span>`;
+  }
+  if (item.hasOwnProperty("activeDescription")) {
+    activeDescription = `<div class="itemActive">
+    ⚡: ${item.activeDescription}
+  </div>`;
+  }
+
+  return `<div class="itemCard ${broken}">
+            <div class="card__caption">
+              <div class="itemCardHeader">${item.name}
+              </div>
+              <div class="itemCardBody">
+                <div class="itemPassive">  ${bonusHP}
+                                          ${bonusScore}
+                                          ${bonusRun}
+                                          ${ignoreFamily}
+                                          ${ignorePower}
+                                          ${lifestealFamily}
+                                          ${lifestealPower}
+                                          ${passiveDescription}
+                </div>
+                ${activeDescription}
+              </div>
+            </div>
+          </div>`;
 };
 
 const nameFromFamilyId = (id, plural) => {

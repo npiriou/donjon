@@ -83,11 +83,6 @@ const itemsList = [
     active: {},
   },
   {
-    name: "Concoction étrange",
-    passive: { bonusHP: 5 },
-    active: {},
-  },
-  {
     name: "Patte du Rat Momie",
     passive: { ignoreFamilyId: [0, 6] },
     active: {},
@@ -132,6 +127,70 @@ const itemsList = [
     name: "Gros Boulet",
     passive: { bonusHP: 7, bonusRun: -1 },
     active: {},
+  },
+  {
+    name: "Champ de Force",
+    passive: { ignoreFct: (p, dice) => [dice >= 5] },
+    active: {},
+    passiveDescription: "Lance un dé, ignore le Mostre sur 5 ou plus",
+  },
+  {
+    name: "Caisse Mystère",
+    passive: {
+      ignoreFct: (p, dice) => [dice > p, dice === 1],
+    },
+    active: {},
+    passiveDescription:
+      "Lance un dé, ignore le Monstre si le résultat est supérieur à sa puissance - Sur 1 brise la Caisse",
+  },
+  // actives
+  {
+    name: "Epée Dansante",
+    passive: {},
+    active: { ignorePower: (p) => p % 2 !== 0 },
+    activeDescription: "Ignore un Monstre Impair",
+  },
+  {
+    name: "Main de Midas",
+    passive: {},
+    active: { lifestealPower: (p) => p <= 5 },
+    activeDescription: "Absorbe un Monstre de puissance 5 ou moins",
+  },
+  {
+    name: "Masque à Gaz",
+    passive: { bonusHP: 4 },
+    active: { ignorePower: (p) => true },
+    activeDescription: "Ignorez un Monstre",
+  },
+  {
+    name: "Barde",
+    passive: { bonusHP: 3 },
+    active: { ignorePower: (p) => true },
+    activeDescription: "Ignorez un Monstre",
+  },
+  {
+    name: "Hache Vorpale",
+    passive: {},
+    active: { ignorePower: (p) => true },
+    activeDescription: "Ignorez un Monstre",
+  },
+  {
+    name: "Calumet de la Paix",
+    passive: {},
+    active: { ignorePower: (p) => true, passTurn: true },
+    activeDescription: "Ignorez un Monstre et passez votre tour",
+  },
+  {
+    name: "Sablier Sombre",
+    passive: {},
+    active: { passTurn: true },
+    activeDescription: "Passez votre tour, même pendant un combat",
+  },
+  {
+    name: "Concoction étrange",
+    passive: {},
+    active: { changeHP: (hp) => hp + 5 },
+    activeDescription: "Gagnez 5 PV",
   },
 ];
 

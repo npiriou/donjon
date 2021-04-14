@@ -133,6 +133,7 @@ const itemsList = [
     passive: { ignoreFct: (p, dice) => [dice >= 5] },
     active: {},
     passiveDescription: "Lance un dé, ignore le Mostre sur 5 ou plus",
+    useDice: true,
   },
   {
     name: "Caisse Mystère",
@@ -140,8 +141,25 @@ const itemsList = [
       ignoreFct: (p, dice) => [dice > p, dice === 1],
     },
     active: {},
+    useDice: true,
     passiveDescription:
       "Lance un dé, ignore le Monstre si le résultat est supérieur à sa puissance - Sur 1 brise la Caisse",
+  },
+  {
+    name: "Kit Ninja",
+    passive: {
+      ignoreFct: (p, dice, hp) => [hp <= 5 && (p === 1 || p === 3 || p === 5)],
+    },
+    active: {},
+    passiveDescription:
+      "Tant que vos PV sont inferieurs à 5, ignore les Monstres de puissance 1,3 ou 5",
+  },
+  {
+    name: "Caméléon",
+    passive: { ignoreFct: (p, dice, hp) => [p >= 6], changeHP: (hp) => hp - 1 },
+    active: {},
+    passiveDescription:
+      "Ignore les Monstres de puissance 6 ou plus, perdez 1 PV par utilisation",
   },
   // actives
   {

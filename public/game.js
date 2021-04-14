@@ -47,8 +47,10 @@ socket.on("lists", (listPlayers, gameUpd) => {
 });
 
 socket.on("game starts", (listPlayers, game) => {
+  newInfo("");
   myTurn = false;
   currentCard = null;
+  updateCardDisplay(currentCard);
   document.getElementById("finalResult").style.display = "none";
   document.getElementById("game-container").style.display = "flex";
   document.getElementById("divReadyCheck").style.display = "none";
@@ -103,7 +105,7 @@ socket.on("game over", (result) => {
       (pl) =>
         `<li>${pl.name} : ${pl.score + pl.beaten.length} ${
           pl.dead ? "(mort)" : pl.run ? "(fuit)" : "(vivant)"
-        }</li>`,
+        } ${pl.winner ? "🏆" : ""}</li>`,
     ) +
     "</ul>";
   document.getElementById("game-container").style.display = "none";

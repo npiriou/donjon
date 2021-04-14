@@ -57,7 +57,7 @@ module.exports = function (server) {
     for (const id in players) {
       if (Object.hasOwnProperty.call(players, id)) {
         players[id] = {
-          //keeps name and id
+          //keeps name and id and dilpomas
           ...players[id],
           ready: false,
           score: 0,
@@ -70,12 +70,22 @@ module.exports = function (server) {
           bonusRun: 0,
           status: [],
           items: [],
+          winner: false,
         };
       }
     }
     io.emit("reset");
   };
 
+  const hardReset = () => {
+    game.state = "lobby";
+    game.turn = 0;
+    currentCard = null;
+    order = [];
+    fleeRoll = null;
+    players = {};
+    io.emit("reset");
+  };
   io.on("connection", (socket) => {
     if (game.state.includes("lobby")) {
       players[socket.id] = {
@@ -91,6 +101,7 @@ module.exports = function (server) {
         drawThisTurn: 0,
         bonusRun: 0,
         status: [],
+        diplomas: 0,
       };
 
       // CHAT PART
@@ -202,8 +213,21 @@ module.exports = function (server) {
       ) {
         // loops over passives and tries to use one, hopefully most item have only one or two
         let passives = item.passive;
-        if (currentCard !== null) {
-          for (const [key, value] of Object.entries(passives)) {
+
+        for (const [key, value] of Object.entries(passives)) {
+          if (key.includes("changeHP")) {
+            let hpBefore = players[socket.id].hp;
+            let hpAfter = value(players[socket.id].hp);
+
+            players[socket.id].hp = hpAfter;
+            io.emit(
+              "info",
+              ` ${players[socket.id].name} utilise ${
+                item.name
+              }, ses PV passent de ${hpBefore} à ${hpAfter}`,
+            );
+          }
+          if (currentCard !== null) {
             if (
               //if mob is ignored either due to its power or family
               (key.includes("ignorePower") &&
@@ -236,13 +260,13 @@ module.exports = function (server) {
                 } avec ${item.name} (+${currentCard.power} PV)`,
               );
               mobBeatenByPlayer(socket.id);
-              break;
             } else if (key.includes("ignoreFct")) {
               //if item has an ignore fct: (power,dice) => [ignored,broken]
               const rollDiceForItem = rollDice(1, 6);
               const [ignored, broken] = value(
                 currentCard.power,
                 rollDiceForItem,
+                players[socket.id].hp,
               );
               if (!item.alreadyUsed) {
                 if (broken) {
@@ -255,12 +279,13 @@ module.exports = function (server) {
                     "info",
                     `${currentCard.name} est ignoré par ${
                       players[socket.id].name
-                    } avec ${item.name} sur un jet de ${rollDiceForItem}`,
+                    } avec ${item.name} ${
+                      item.useDice ? `sur un jet de ${rollDiceForItem}` : ``
+                    }`,
                   );
                   mobBeatenByPlayer(socket.id);
-                  break;
-                } else {
-                  // if not ignored
+                } else if (item.useDice) {
+                  // if not ignored and used dice => dice failed
                   io.emit(
                     "info",
                     `${
@@ -274,8 +299,8 @@ module.exports = function (server) {
               }
             }
           }
-          updateAll();
         }
+        updateAll();
       }
     });
     socket.on("use item active", (itemNumber) => {
@@ -352,22 +377,26 @@ module.exports = function (server) {
             }
           }
         }
+        if (players[socket.id].hp <= 0) {
+          onDeath(socket.id);
+        }
         onBreaks(item, socket.id);
         updateAll();
       }
     });
     socket.on("disconnect", (reason) => {
       console.log(`a player disconnected because ${reason}`);
-      io.emit("info", `${players[socket.id].name} s'est deconnecté`);
+      io.emit("info", `Un joueur s'est deconnecté`);
       if (game.state.includes("game") && socket.id === findCurrentPlayer().id)
         passToNextPlayer();
       delete players[socket.id];
       console.log(`${Object.values(players).length} still in game`);
-      if (Object.values(players).length <= 1 && game.state === "game") reset();
+      if (Object.values(players).length <= 1 && game.state === "game")
+        hardReset();
       updateAll();
     });
     socket.on("reset", () => {
-      reset();
+      hardReset();
     });
 
     function updateAll() {
@@ -445,14 +474,16 @@ module.exports = function (server) {
         result = "Tout le monde est mort :(";
       }
       // let contenders = Object.values(players).filter((pl) => !pl.dead);
-
-      if (Object.values(players).every((pl) => pl.dead || pl.run)) {
+      else if (Object.values(players).every((pl) => pl.dead || pl.run)) {
         result = `<div>Le donjon n'a pas été poncé</div>`;
-      }
-      if (deck.length === 0) {
+        players[winnerId(players, false)].diplomas += 1;
+        players[winnerId(players, false)].winner = true;
+      } else if (deck.length === 0) {
         result = `<div>Le donjon a été poncé</div>`;
+        players[winnerId(players, true)].diplomas += 1;
+        players[winnerId(players, true)].winner = true;
       }
-
+      updateAll();
       io.emit("game over", result);
       reset();
       updateAll();
@@ -509,4 +540,26 @@ const nbStartingItems = (nbPl) => {
     default:
       return 5;
   }
+};
+const randomValueFromArray = (myArray) =>
+  myArray[Math.floor(Math.random() * myArray.length)];
+
+const getAllIndexes = (arr, val) => {
+  const indexes = [];
+  for (let i = 0; i < arr.length; i++) if (arr[i] === val) indexes.push(i);
+  return indexes;
+};
+
+const winnerId = (players, ponce) => {
+  const playersArr = ponce
+    ? Object.values(players).filter((pl) => !pl.run && !pl.dead)
+    : Object.values(players).filter((pl) => !pl.dead);
+
+  const onlyScores = playersArr.map((pl) => pl.score + pl.beaten.length);
+
+  const maxScore = Math.max(...onlyScores);
+
+  const winnersArr = getAllIndexes(onlyScores, maxScore);
+
+  return playersArr[randomValueFromArray(winnersArr)].id;
 };

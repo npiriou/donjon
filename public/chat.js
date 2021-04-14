@@ -2,8 +2,6 @@ const writePlayers = (players, game) => {
   // UPDATE PLAYERS DISPLAY AND SCORES
   const parent = document.querySelector("#listPlayers");
   players.forEach((pl) => {
-    const id = pl.id;
-
     if (!Array.from(parent.children).some((e) => e.id === pl.id)) {
       // if some players arent on the list yet
       const el = document.createElement("li");
@@ -22,6 +20,9 @@ const writePlayers = (players, game) => {
         : pl.run
         ? `${pl.name} : ${pl.beaten.length + pl.score} pts posés`
         : `${current}${pl.name} : ${pl.hp}pv, ${pl.beaten.length} dans la pile`;
+      for (let i = 0; i < pl.diplomas; i++) {
+        el.innerText += " 🎓";
+      }
     }
   });
   // if some players are written but not in game anymore, delete them
@@ -30,12 +31,6 @@ const writePlayers = (players, game) => {
       parent.removeChild(document.getElementById(el.id));
     }
   });
-  // update display of whos plyer is the turn
-  // let currentPlayer = players.find((pl) => pl.current);
-  // if (currentPlayer && game.state.includes("game"))
-  //   document.getElementById(
-  //     "whoseTurn",
-  //   ).innerText = `Au tour de ${currentPlayer.name}`;
 };
 
 const askName = () => {
